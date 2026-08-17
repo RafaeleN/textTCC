@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  KAFFE FÜR ALLE — Leitor de Jornais
+  Versão completa com:
+    - Modo claro/escuro (switch)
+    - Modo leitura (persistente)
+    - Tela cheia nativa (fullscreen)
+    - Busca com autocomplete
+    - Text-to-Speech
+    - Painel administrativo
+    - Comentários didáticos em todas as linhas
+  ============================================================
+-->
+<html lang="pt-BR">
+<head>
+  <!-- Metadados básicos da página -->
+  <meta charset="UTF-8" />                    <!-- Define codificação UTF-8 para caracteres especiais -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" /> <!-- Responsividade em dispositivos móveis -->
+  <title>Kaffe Für Alle — Jornais</title>    <!-- Título que aparece na aba do navegador -->
+
+  <!-- Importação de fontes do Google: Cinzel (títulos), Fraunces (texto), Poppins (metadados) -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Fraunces:wght@400;700;900&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Início do CSS (estilos) -->
+  <style>
+    /* ============================================================
+       CSS — TEMA CAFETERIA com suporte para modo noturno e leitura
+       As cores principais são #631f08 (marrom) e #f7ece0 (bege)
+       ============================================================ */
+
+    /* Definição da fonte 'TAM NINBUS' (fallback local) - usada nos títulos principais */
+    @font-face {
+      font-family: 'TAM NINBUS';             /* Nome da fonte que usaremos no CSS */
+      src: local('TAM NINBUS'), local('TAMNINBUS'), url('data:font/woff2;base64,dummy') format('woff2');
+      /* Se o arquivo não estiver disponível, usa uma fonte local ou um dummy (fallback) */
+      font-weight: 700;                      /* Peso da fonte (negrito) */
+    }
+
+    /* Variáveis CSS (custom properties) para o tema claro */
+    :root {
+      --papel:    #f7ece0;   /* Cor de fundo principal (bege claro) */
+      --papel2:   #ede0d0;   /* Bege um pouco mais escuro (para hover, bordas) */
+      --tinta:    #631f08;   /* Cor principal de destaque (marrom café) */
+      --tinta2:   #3a2a1a;   /* Cor do texto principal (marrom suave) */
+      --tinta3:   #7a5a4a;   /* Cor para metadados e textos secundários (marrom claro) */
+      --linha:    #631f08;   /* Cor das linhas de separação (bordas) */
+      --caixa:    #d4c4b0;   /* Cor para placeholders e elementos neutros */
+      --fundo-btn: #631f08;  /* Cor de fundo dos botões principais */
+      --texto-btn: #f7ece0;  /* Cor do texto dos botões */
+      --sombra:   rgba(99, 31, 8, 0.2); /* Sombra com transparência marrom */
+    }
+
+    /* Tema noturno (escuro) - sobrescreve as variáveis quando o body tem a classe 'modo-noturno' */
+    body.modo-noturno {
+      --papel:    #1a0e08;   /* Fundo escuro (quase preto) */
+      --papel2:   #2a1a12;   /* Fundo um pouco mais claro para contrastar */
+      --tinta:    #f7ece0;   /* Destaques em bege (inverte) */
+      --tinta2:   #e8dccc;   /* Texto principal claro */
+      --tinta3:   #b09888;   /* Metadados em tom mais suave */
+      --linha:    #f7ece0;   /* Linhas em bege */
+      --caixa:    #3a2a1a;   /* Elementos neutros escuros */
+      --fundo-btn: #f7ece0;  /* Fundo dos botões claro */
+      --texto-btn: #631f08;  /* Texto dos botões escuro (marrom) */
+      --sombra:   rgba(247, 236, 224, 0.2); /* Sombra clara */
+    }
+
+    /* Reset básico: remove margens e paddings padrão, define box-sizing como border-box */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* Estilos do corpo da página */
+    body {
+      background: var(--papel);               /* Fundo definido pela variável (claro ou escuro) */
+      color: var(--tinta2);                  /* Cor do texto principal */
+      font-family: 'Fraunces', Georgia, serif; /* Fonte serifada para corpo de texto (estilo jornal) */
+      line-height: 1.6;                      /* Espaçamento entre linhas para melhor leitura */
+      transition: background 0.3s, color 0.3s; /* Transição suave ao mudar de tema */
+    }
+
+    /* Links herdam a cor do texto e não têm sublinhado */
+    a { color: inherit; text-decoration: none; }
+    /* Imagens ocupam 100% da largura do container, sem distorção */
+    img { max-width: 100%; display: block; }
+
+    /* Container principal que centraliza o conteúdo com largura máxima de 1100px */
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ===== MODO LEITURA ===== */
+    /* Quando o body tem a classe 'modo-leitura', escondemos elementos que não são o conteúdo principal */
+    body.modo-leitura .masthead,          /* Cabeçalho principal */
+    body.modo-leitura .barra-info,        /* Barra com data e botões */
+    body.modo-leitura .rodape,            /* Rodapé */
+    body.modo-leitura .link-admin,        /* Link para o painel */
+    body.modo-leitura .secao > h2,        /* Títulos das seções (ex: "Mais Manchetes") */
+    body.modo-leitura .filtro-busca,      /* Campo de busca */
+    body.modo-leitura .controls,          /* Controles de áudio */
+    body.modo-leitura .btn,               /* Botões em geral */
+    body.modo-leitura .back-btn,          /* Botão voltar */
+    body.modo-leitura .voltar,            /* Link voltar */
+    body.modo-leitura .like-row,          /* Linha de curtir */
+    body.modo-leitura .tts-controls {     /* Controles de texto-para-fala */
+      display: none !important;           /* Força a ocultação com !important para garantir */
+    }
+
+    /* No modo leitura, a manchete principal e a lista de notícias ficam centralizadas e com largura confortável */
+    body.modo-leitura .lead,
+    body.modo-leitura .secao {
+      max-width: 700px;                  /* Largura máxima para leitura confortável */
+      margin: 0 auto;                   /* Centraliza horizontalmente */
+      border: none;                     /* Remove bordas extras */
+      padding: 20px 0;
+    }
+    /* As colunas viram uma única coluna (sem quebra em múltiplas colunas) */
+    body.modo-leitura .colunas {
+      column-count: 1;                  /* Apenas uma coluna */
+      column-rule: none;                /* Remove a linha separadora entre colunas */
+    }
+    /* Estilos para aumentar o tamanho da fonte e melhorar a legibilidade */
+    body.modo-leitura .materia {
+      border-bottom: 1px solid var(--caixa);
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+    body.modo-leitura .lead h1 {
+      font-size: 2.8rem;               /* Título maior */
+    }
+    body.modo-leitura .lead .resumo {
+      font-size: 1.3rem;
+    }
+    body.modo-leitura .materia h3 {
+      font-size: 1.6rem;
+    }
+    body.modo-leitura .materia p {
+      font-size: 1.15rem;
+    }
+
+    /* ============================================================
+       BARRA DE INFO (com switch noturno + botões modo leitura e fullscreen)
+       ============================================================ */
+    .barra-info {
+      display: flex;                     /* Usa flexbox para alinhar itens */
+      justify-content: space-between;    /* Espaço entre os lados esquerdo e direito */
+      align-items: center;              /* Centraliza verticalmente */
+      flex-wrap: wrap;                 /* Permite quebra de linha em telas pequenas */
+      gap: 8px;                        /* Espaçamento entre os itens */
+      font-family: 'Poppins', sans-serif; /* Fonte sem serifa para essa área */
+      font-size: 0.7rem;
+      text-transform: uppercase;        /* Tudo em maiúsculas */
+      letter-spacing: 0.1em;           /* Espaçamento entre letras */
+      color: var(--tinta3);             /* Cor definida pelas variáveis */
+      padding: 8px 0;
+      border-bottom: 1px solid var(--linha); /* Linha separadora */
+    }
+
+    /* Wrapper para o switch (modo noturno) e seu rótulo */
+    .switch-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    /* Rótulo "Modo noturno" */
+    .switch-label {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      color: var(--tinta3);
+    }
+    /* Switch estilizado (Uiverse) */
+    .switch {
+      font-size: 17px;                 /* Tamanho base do switch */
+      position: relative;              /* Para posicionar o slider interno */
+      display: inline-block;
+      width: 3.5em;                   /* Largura total do switch */
+      height: 2em;                    /* Altura total */
+    }
+    /* Esconde o checkbox nativo */
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    /* O slider (parte que desliza) */
+    .slider-toggle {
+      --background: #631f08;           /* Cor de fundo do slider no modo claro */
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--background);
+      transition: .5s;                 /* Transição suave */
+      border-radius: 30px;             /* Bordas arredondadas */
+    }
+    /* O círculo interno (que parece uma lua/sol) */
+    .slider-toggle:before {
+      position: absolute;
+      content: "";
+      height: 1.4em;
+      width: 1.4em;
+      border-radius: 50%;              /* Forma circular */
+      left: 10%;                      /* Posiciona à esquerda */
+      bottom: 15%;
+      box-shadow: inset 8px -4px 0px 0px #fff000; /* Simula um sol (amarelo) */
+      background: var(--background);   /* Mesma cor do fundo */
+      transition: .5s;                 /* Transição suave */
+    }
+    /* Quando o checkbox está marcado (modo noturno ativado) */
+    input:checked + .slider-toggle {
+      background-color: #f7ece0;       /* Fundo do slider fica bege */
+    }
+    /* O círculo se move para a direita e muda a sombra para simular uma lua */
+    input:checked + .slider-toggle:before {
+      transform: translateX(100%);     /* Move para o lado direito */
+      box-shadow: inset 15px -4px 0px 15px #fff000; /* Sombra que parece lua cheia */
+    }
+    /* No modo noturno, as cores do switch se invertem para combinar com o tema */
+    body.modo-noturno .slider-toggle {
+      --background: #f7ece0;           /* Fundo claro no modo noturno */
+    }
+    body.modo-noturno input:checked + .slider-toggle {
+      background-color: #631f08;       /* Fundo escuro quando ativado no modo noturno */
+    }
+
+    /* Container para os botões de ação (switch + modo leitura + fullscreen) */
+    .acoes {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Botões com ícones (modo leitura, fullscreen) */
+    .btn-icone {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--tinta);
+      padding: 4px 6px;
+      border-radius: 0;
+      transition: 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+    .btn-icone:hover {
+      background: var(--tinta);        /* Fundo escuro ao passar o mouse */
+      color: var(--papel);             /* Texto claro */
+    }
+
+    /* Botão específico para fullscreen (ícone maior) */
+    .btn-fullscreen {
+      font-size: 1.4rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--tinta);
+      padding: 4px 6px;
+      transition: 0.2s;
+    }
+    .btn-fullscreen:hover {
+      background: var(--tinta);
+      color: var(--papel);
+    }
+
+    /* ============================================================
+       GRID DE COLUNAS (para as matérias)
+       ============================================================ */
+    .colunas {
+      column-count: 3;                  /* Três colunas (estilo jornal) */
+      column-gap: 28px;                /* Espaço entre colunas */
+      column-rule: 1px solid var(--caixa); /* Linha separadora entre colunas */
+    }
+    .colunas-2 {
+      column-count: 2;                  /* Duas colunas (usado em algumas situações) */
+      column-gap: 28px;
+      column-rule: 1px solid var(--caixa);
+    }
+    /* Em telas menores que 768px, as colunas viram uma única coluna */
+    @media (max-width: 768px) {
+      .colunas, .colunas-2 {
+        column-count: 1;
+      }
+    }
+
+    /* Cada seção (bloco de conteúdo) */
+    .secao {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--caixa);
+    }
+    .secao:last-child {
+      border-bottom: none;              /* Última seção não tem borda inferior */
+    }
+    /* Título da seção (estilo jornal) */
+    .secao h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: var(--tinta);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--tinta);
+    }
+
+    /* Manchete principal (lead) */
+    .lead {
+      padding: 24px 0;
+      border-bottom: 3px double var(--linha); /* Linha dupla para destaque */
+    }
+    .lead .categoria {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--tinta3);
+      margin-bottom: 8px;
+    }
+    .lead h1 {
+      font-family: 'TAM NINBUS', 'Cinzel', 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.5rem); /* Tamanho responsivo */
+      font-weight: 900;
+      line-height: 1.05;
+      color: var(--tinta);
+      margin-bottom: 12px;
+    }
+    .lead .resumo {
+      font-family: 'Fraunces', serif;
+      font-size: 1.15rem;
+      line-height: 1.5;
+      color: var(--tinta2);
+      text-align: justify;              /* Texto justificado */
+    }
+
+    /* Matéria (cada notícia na lista) */
+    .materia {
+      break-inside: avoid;              /* Evita que a matéria seja quebrada entre colunas */
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--caixa);
+    }
+    .materia:last-child {
+      border-bottom: none;
+    }
+    .materia h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--tinta);
+      margin-bottom: 8px;
+    }
+    .materia p {
+      font-family: 'Fraunces', serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--tinta2);
+      text-align: justify;
+    }
+    .materia .meta {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--tinta3);
+      margin-top: 8px;
+    }
+    /* Link que envolve a matéria (para abrir a notícia original) */
+    .materia-link {
+      display: block;
+      transition: background 0.15s;
+      padding: 4px 0;
+    }
+    .materia-link:hover {
+      background: var(--papel2);         /* Fundo mais escuro ao passar o mouse */
+    }
+
+    /* ============================================================
+       CARDS DE JORNAIS (lista na página inicial)
+       ============================================================ */
+    .grid-jornais {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Grid responsivo */
+      gap: 0;
+      border-top: 1px solid var(--linha);
+    }
+    .card-jornal {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 16px;
+      border-bottom: 1px solid var(--caixa);
+      border-right: 1px solid var(--caixa);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.1s;
+      background: var(--papel);
+    }
+    .card-jornal:hover {
+      background: var(--papel2);
+    }
+    /* Efeito de clique (active) - dá um feedback visual */
+    .card-jornal:active {
+      transform: scale(0.97);            /* Reduz ligeiramente o tamanho */
+      background: var(--caixa);
+      box-shadow: inset 0 0 0 2px var(--tinta);
+    }
+    /* Logo do jornal (círculo) */
+    .card-jornal .logo {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid var(--caixa);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      font-size: 1.3rem;
+      color: var(--tinta);
+    }
+    .card-jornal .logo img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .card-jornal .nome {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--tinta);
+      line-height: 1.2;
+    }
+    .card-jornal .cta {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--tinta3);
+      margin-top: 3px;
+    }
+
+    /* Botão voltar (estilo link) */
+    .voltar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--tinta3);
+      padding: 12px 0;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+    }
+    .voltar:hover { color: var(--tinta); }
+
+    /* Esqueletos (skeleton) para carregamento */
+    .skeleton {
+      height: 60px;
+      margin-bottom: 16px;
+      background: var(--caixa);
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50%      { opacity: 1; }
+    }
+
+    /* Aviso (ex: erro ou mensagem informativa) */
+    .aviso {
+      background: var(--papel2);
+      border-left: 3px solid var(--tinta);
+      padding: 14px 16px;
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      color: var(--tinta2);
+      margin: 16px 0;
+    }
+
+    /* Rodapé */
+    .rodape {
+      border-top: 1px solid var(--linha);
+      margin-top: 30px;
+      padding: 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--tinta3);
+    }
+    .rodape .pagina { font-weight: 700; color: var(--tinta); }
+    .rodape .atualizacao { font-weight: 400; color: var(--tinta3); }
+
+    /* Link para o painel administrativo */
+    .link-admin {
+      display: inline-block;
+      margin-top: 20px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--tinta3);
+      border-bottom: 1px solid var(--tinta3);
+      cursor: pointer;
+    }
+    .link-admin:hover { color: var(--tinta); border-color: var(--tinta); }
+
+    /* ============================================================
+       PAINEL ADMIN (gerenciar jornais)
+       ============================================================ */
+    .painel-titulo {
+      font-family: 'TAM NINBUS', 'Cinzel', serif;
+      font-size: 2rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--tinta);
+      margin-bottom: 4px;
+    }
+    .painel-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 3px double var(--linha);
+    }
+    /* Formulário do admin */
+    form.admin-form { display: grid; gap: 14px; margin-top: 20px; }
+    label {
+      display: block;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--tinta3);
+      margin-bottom: 6px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--tinta2);
+      border: 1px solid var(--caixa);
+      border-radius: 0;
+      font-family: 'Fraunces', serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input:focus { border-color: var(--tinta); }
+    .linha-form { display: grid; gap: 14px; }
+    @media (min-width: 640px) { .linha-form.duas { grid-template-columns: 1fr 1fr; } }
+
+    /* Botão padrão */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid var(--tinta);
+      background: transparent;
+      color: var(--tinta);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      border-radius: 0;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: var(--tinta); color: var(--papel); }
+    .btn.solid { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+    .btn.solid:hover { background: transparent; color: var(--tinta); }
+
+    /* Lista de jornais no admin */
+    .lista-admin { display: grid; gap: 0; margin-top: 20px; border-top: 1px solid var(--linha); }
+    .item-admin {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-bottom: 1px solid var(--caixa);
+    }
+    .item-admin .logo-mini {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid var(--caixa);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      flex: 0 0 auto;
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      color: var(--tinta);
+    }
+    .item-admin .logo-mini img { width: 100%; height: 100%; object-fit: cover; }
+    .item-admin .info { flex: 1; min-width: 0; }
+    .item-admin .info .n { font-family: 'Cinzel', serif; font-weight: 700; color: var(--tinta); }
+    .item-admin .info .s { font-family: 'Fraunces', serif; font-size: 0.8rem; color: var(--tinta3); word-break: break-all; }
+    .item-admin .info .l { font-family: 'Poppins', sans-serif; font-size: 0.65rem; color: var(--tinta3); margin-top: 2px; word-break: break-all; }
+    /* Botão remover (X) */
+    .btn-remover {
+      background: transparent;
+      border: 1px solid var(--caixa);
+      width: 34px; height: 34px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: var(--tinta3);
+      font-size: 1rem;
+      border-radius: 0;
+      transition: 0.2s;
+    }
+    .btn-remover:hover { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+
+    /* Dica (texto informativo) */
+    .dica {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--tinta3);
+    }
+
+    /* ============================================================
+       FILTRO DE BUSCA com autocomplete
+       ============================================================ */
+    .filtro-busca {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      position: relative; /* Para posicionar a lista de sugestões */
+    }
+    .filtro-busca input {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      border: 1px solid var(--caixa);
+      background: var(--papel);
+      color: var(--tinta2);
+      font-family: 'Fraunces', serif;
+      font-size: 0.9rem;
+      border-radius: 0;
+    }
+    .filtro-busca input:focus {
+      border-color: var(--tinta);
+    }
+    .filtro-busca .btn {
+      padding: 8px 16px;
+    }
+
+    /* Container das sugestões (autocomplete) - aparece abaixo do input */
+    .autocomplete-suggestions {
+      position: absolute;
+      top: 100%; /* Logo abaixo do input */
+      left: 0;
+      right: 0;
+      background: var(--papel);
+      border: 1px solid var(--caixa);
+      border-top: none;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none; /* Escondido por padrão */
+      box-shadow: 0 4px 8px var(--sombra);
+    }
+    /* Quando tem a classe 'show', fica visível */
+    .autocomplete-suggestions.show {
+      display: block;
+    }
+    /* Cada item de sugestão */
+    .autocomplete-suggestions .suggestion {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-family: 'Fraunces', serif;
+      font-size: 0.9rem;
+      color: var(--tinta2);
+      transition: background 0.15s;
+    }
+    .autocomplete-suggestions .suggestion:hover {
+      background: var(--papel2);
+    }
+
+    /* ============================================================
+       CONTROLES DO TEXT-TO-SPEECH
+       ============================================================ */
+    .tts-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .tts-controls button {
+      background: transparent;
+      border: 1px solid var(--tinta);
+      padding: 6px 12px;
+      border-radius: 0;
+      cursor: pointer;
+      color: var(--tinta);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      transition: 0.2s;
+    }
+    .tts-controls button:hover {
+      background: var(--tinta);
+      color: var(--papel);
+    }
+    /* Slider para velocidade da fala */
+    .tts-controls input[type="range"] {
+      width: 80px;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: var(--caixa);
+    }
+    .tts-controls input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--tinta);
+      cursor: pointer;
+    }
+    .tts-controls span {
+      font-size: 0.7rem;
+      color: var(--tinta3);
+    }
+
+    /* ============================================================
+       ACESSIBILIDADE: foco visível para navegação por teclado
+       ============================================================ */
+    :focus-visible {
+      outline: 2px solid var(--tinta);
+      outline-offset: 2px;
+    }
+  </style>
+  <!-- Fim do CSS -->
+</head>
+
+<body>
+  <!-- Container principal onde o JavaScript vai injetar o conteúdo -->
+  <div class="container" id="app" role="main"></div>
+
+  <!-- Início do JavaScript -->
+  <script>
+    /* ============================================================
+       MÓDULOS LÓGICOS (cada módulo tem uma responsabilidade)
+       Essa estrutura ajuda a organizar o código e facilita a manutenção.
+       ============================================================ */
+
+    // ---------- Módulo de Dados (gerencia localStorage e dados dos jornais) ----------
+    const DataModule = (function() {
+      // Chaves usadas no localStorage
+      const CHAVE_JORNAIS = 'cafe_jornais';  // Chave para salvar a lista de jornais
+      const CHAVE_SENHA   = 'cafe_senha';    // Chave para salvar a senha do admin
+      const CHAVE_SESSAO  = 'cafe_sessao';   // Chave para controle de sessão (login)
+      const SENHA_PADRAO  = 'cafe123';       // Senha padrão caso não haja nenhuma salva
+
+      // Lista de jornais padrão (será usada se não houver dados salvos)
+      const JORNAIS_PADRAO = [
+        { name: 'Folha de São Paulo',    site: 'https://www.folha.uol.com.br/',       rss: 'https://feeds.folha.uol.com.br/emcimadahora/rss091.xml', logo: '' },
+        { name: 'G1 Globo',              site: 'https://g1.globo.com/',               rss: 'https://g1.globo.com/rss/g1/',                           logo: '' },
+        { name: 'Tribuna',               site: 'https://tribunapr.com.br/',           rss: 'https://tribunapr.com.br/feed/',                         logo: '' },
+        { name: 'ESPN Brasil',           site: 'https://www.espn.com.br/',             rss: 'https://www.espn.com.br/espn/rss/news',                  logo: '' },
+        { name: 'Folha do Litoral News', site: 'https://folhadolitoralnews.com.br/',  rss: 'https://folhadolitoralnews.com.br/feed/',               logo: '' },
+        { name: 'InvestNews',            site: 'https://investnews.com.br/',          rss: 'https://investnews.com.br/feed/',                        logo: '' },
+        { name: 'O Globo',               site: 'https://oglobo.globo.com/',           rss: 'https://oglobo.globo.com/rss/',                          logo: '' },
+        { name: 'Estadão',               site: 'https://www.estadao.com.br/',         rss: 'https://www.estadao.com.br/rss/',                        logo: '' },
+        { name: 'UOL',                   site: 'https://www.uol.com.br/',             rss: 'https://rss.uol.com.br/xml/noticias.xml',                logo: '' },
+        { name: 'BBC Brasil',            site: 'https://www.bbc.com/portuguese',       rss: 'https://feeds.bbci.co.uk/portuguese/rss.xml',             logo: '' },
+      ];
+
+      // Função para carregar a lista de jornais do localStorage, ou usar a padrão
+      function carregarJornais() {
+        try {
+          const d = localStorage.getItem(CHAVE_JORNAIS); // Tenta pegar os dados salvos
+          if (d) return JSON.parse(d);                   // Se existir, converte de JSON para objeto
+        } catch(e) { /* ignora erro de parse */ }
+        // Se não houver dados salvos, salva a lista padrão e a retorna
+        localStorage.setItem(CHAVE_JORNAIS, JSON.stringify(JORNAIS_PADRAO));
+        return JORNAIS_PADRAO;
+      }
+
+      // Salva a lista de jornais no localStorage
+      function salvarJornais(lista) {
+        localStorage.setItem(CHAVE_JORNAIS, JSON.stringify(lista));
+      }
+
+      // Obtém a senha atual (se não houver, usa a padrão)
+      function obterSenha() {
+        return localStorage.getItem(CHAVE_SENHA) || SENHA_PADRAO;
+      }
+
+      // Define uma nova senha
+      function definirSenha(p) {
+        localStorage.setItem(CHAVE_SENHA, p);
+      }
+
+      // Verifica se o usuário está logado (sessão ativa)
+      function estaLogado() {
+        return sessionStorage.getItem(CHAVE_SESSAO) === '1';
+      }
+
+      // Tenta fazer login com a senha fornecida
+      function fazerLogin(s) {
+        if (s === obterSenha()) {
+          sessionStorage.setItem(CHAVE_SESSAO, '1'); // Marca sessão como logada
+          return true;
+        }
+        return false;
+      }
+
+      // Faz logout (remove a marcação de sessão)
+      function fazerLogout() {
+        sessionStorage.removeItem(CHAVE_SESSAO);
+      }
+
+      // Obtém o ícone (favicon) de um site usando o serviço do Google
+      function iconeDoSite(site) {
+        try {
+          const u = new URL(site); // Tenta criar uma URL válida
+          return 'https://www.google.com/s2/favicons?domain=' + u.hostname + '&sz=128';
+        } catch(e) {
+          return ''; // Se a URL for inválida, retorna vazio
+        }
+      }
+
+      // Retorna a logo de um jornal (se tiver URL própria, senão usa o ícone do site)
+      function logoDoJornal(j) {
+        if (j.logo && j.logo.trim()) return j.logo; // Se tem logo definida, usa ela
+        return iconeDoSite(j.site);                 // Senão, usa o favicon
+      }
+
+      // Exporta as funções públicas do módulo
+      return {
+        carregarJornais,
+        salvarJornais,
+        obterSenha,
+        definirSenha,
+        estaLogado,
+        fazerLogin,
+        fazerLogout,
+        logoDoJornal
+      };
+    })();
+
+    // ---------- Módulo de API (busca notícias via RSS) ----------
+    const ApiModule = (function() {
+      // Cache para evitar requisições repetidas (armazena resultados por nome do jornal)
+      const cache = new Map();
+      // Tempo de vida do cache: 5 minutos (em milissegundos)
+      const TTL = 5 * 60 * 1000;
+
+      // Função para limpar HTML de uma string (remove tags e pega apenas texto)
+      function limparHTML(t) {
+        const d = document.createElement('div');
+        d.innerHTML = t;
+        return (d.textContent || '').trim();
+      }
+
+      // Formata uma data para exibição (ex: "15 de março de 2025, 14:30")
+      function formatarData(t) {
+        if (!t) return '';
+        const d = new Date(t);
+        if (isNaN(d)) return t; // Se não for uma data válida, retorna o original
+        return d.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      // Função principal para buscar notícias de um jornal
+      async function buscarNoticias(jornal) {
+        const agora = Date.now();
+        // Verifica se já temos dados em cache e se ainda são válidos
+        const cached = cache.get(jornal.name);
+        if (cached && (agora - cached.timestamp) < TTL) {
+          return cached.data; // Retorna dados do cache
+        }
+
+        try {
+          // Monta a URL da API rss2json com o feed RSS do jornal
+          const url = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(jornal.rss);
+          const r = await fetch(url); // Faz a requisição
+          if (!r.ok) throw new Error('Erro ' + r.status);
+          const dados = await r.json(); // Converte a resposta para JSON
+          if (dados.status !== 'ok') throw new Error('Feed com erro');
+
+          // Mapeia os itens do feed para um formato mais simples
+          let items = (dados.items || []).map(function(item) {
+            return {
+              titulo: item.title,
+              link:   item.link,
+              resumo: limparHTML(item.description || ''),
+              data:   item.pubDate,
+              dataObj: new Date(item.pubDate) // Cria um objeto Date para ordenação
+            };
+          });
+          // Ordena as notícias da mais nova para a mais antiga (decrescente)
+          items.sort(function(a, b) {
+            return b.dataObj - a.dataObj;
+          });
+
+          const resultado = { items };
+          // Armazena no cache com o timestamp atual
+          cache.set(jornal.name, { data: resultado, timestamp: agora });
+          return resultado;
+        } catch(e) {
+          // Em caso de erro, retorna um objeto com a mensagem de erro
+          return { items: [], erro: 'Não foi possível carregar as notícias de ' + jornal.name };
+        }
+      }
+
+      // Limpa todo o cache (útil para forçar atualização)
+      function limparCache() {
+        cache.clear();
+      }
+
+      // Exporta as funções públicas
+      return {
+        buscarNoticias,
+        formatarData,
+        limparCache
+      };
+    })();
+
+    // ---------- Módulo de UI (gerencia o estado da interface e renderização) ----------
+    const UIModule = (function() {
+      // Função utilitária para criar elementos HTML com atributos e filhos
+      function el(tag, attrs, ...filhos) {
+        const e = document.createElement(tag);
+        if (attrs) {
+          for (const [k, v] of Object.entries(attrs)) {
+            if (k === 'class') {
+              e.className = v;                   // Atributo 'class'
+            } else if (k.startsWith('on') && typeof v === 'function') {
+              // Se começa com 'on', é um evento (ex: onclick)
+              e.addEventListener(k.slice(2).toLowerCase(), v);
+            } else if (v != null) {
+              e.setAttribute(k, v);              // Outros atributos
+            }
+          }
+        }
+        // Adiciona os filhos (podem ser elementos ou texto)
+        filhos.flat().forEach(function(f) {
+          e.append(f && f.nodeType ? f : document.createTextNode(f ?? ''));
+        });
+        return e;
+      }
+
+      // Retorna a data de hoje formatada (ex: "segunda-feira, 10 de março de 2025")
+      function dataHoje() {
+        return new Date().toLocaleDateString('pt-BR', {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+
+      // Referência ao elemento #app no DOM
+      let appEl = document.getElementById('app');
+
+      // Estado da aplicação (modo noturno, modo leitura, última atualização)
+      let estado = {
+        modoNoturno: false,
+        modoLeitura: false,
+        ultimaAtualizacao: null
+      };
+
+      // Alterna o modo noturno (recebe um booleano)
+      function toggleModoNoturno(checked) {
+        estado.modoNoturno = checked;
+        document.body.classList.toggle('modo-noturno', checked);
+        localStorage.setItem('cafe_modo_noturno', checked ? '1' : '0');
+        // Sincroniza o estado do switch (caso exista no DOM)
+        const switchInput = document.getElementById('nightModeSwitch');
+        if (switchInput) switchInput.checked = checked;
+      }
+
+      // Alterna o modo leitura
+      function toggleModoLeitura() {
+        estado.modoLeitura = !estado.modoLeitura;
+        document.body.classList.toggle('modo-leitura', estado.modoLeitura);
+        localStorage.setItem('cafe_modo_leitura', estado.modoLeitura ? '1' : '0');
+        // Atualiza o texto do botão (se existir)
+        const btn = document.getElementById('leituraBtn');
+        if (btn) btn.textContent = estado.modoLeitura ? '📖 Sair' : '📖 Ler';
+      }
+
+      // Alterna o modo fullscreen (tela cheia nativa do navegador)
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          // Se não estiver em tela cheia, tenta ativar
+          document.documentElement.requestFullscreen().catch(function(err) {
+            alert('Não foi possível entrar em tela cheia: ' + err.message);
+          });
+        } else {
+          // Se estiver, sai da tela cheia
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+        }
+      }
+
+      // Carrega as preferências salvas (modo noturno, modo leitura)
+      function carregarPreferencias() {
+        if (localStorage.getItem('cafe_modo_noturno') === '1') {
+          toggleModoNoturno(true);
+        }
+        if (localStorage.getItem('cafe_modo_leitura') === '1') {
+          estado.modoLeitura = true;
+          document.body.classList.add('modo-leitura');
+        }
+      }
+
+      // Renderiza a barra de informações (data, switch noturno, botões)
+      function renderBarraInfo(extraEsquerda, extraDireita) {
+        const esquerda = extraEsquerda || el('span', {}, dataHoje());
+
+        // Switch noturno (componente)
+        const switchWrapper = el('span', { class: 'switch-wrapper' },
+          el('span', { class: 'switch-label' }, 'Modo noturno'),
+          el('label', { class: 'switch' },
+            el('input', {
+              type: 'checkbox',
+              id: 'nightModeSwitch',
+              checked: estado.modoNoturno,
+              onchange: function(e) { toggleModoNoturno(e.target.checked); }
+            }),
+            el('span', { class: 'slider-toggle' })
+          )
+        );
+
+        // Botão modo leitura
+        const leituraBtn = el('button', {
+          class: 'btn-icone',
+          id: 'leituraBtn',
+          onclick: toggleModoLeitura,
+          title: 'Modo leitura sem distrações'
+        }, estado.modoLeitura ? '📖 Sair' : '📖 Ler');
+
+        // Botão fullscreen (tela cheia)
+        const fullscreenBtn = el('button', {
+          class: 'btn-fullscreen',
+          onclick: toggleFullscreen,
+          title: 'Tela cheia'
+        }, '⛶'); // Ícone de tela cheia
+
+        // Agrupa os botões à direita
+        const direita = el('span', { class: 'acoes' },
+          switchWrapper,
+          leituraBtn,
+          fullscreenBtn,
+          extraDireita || ''
+        );
+
+        return el('div', { class: 'barra-info' }, esquerda, direita);
+      }
+
+      // Renderiza o rodapé com número da página e hora da última atualização
+      function renderRodape(pagina, ultimaAtualizacao) {
+        const atual = ultimaAtualizacao || estado.ultimaAtualizacao || 'Agora';
+        const textoAtualizacao = 'Última atualização: ' +
+          (typeof atual === 'string' ? atual : atual.toLocaleTimeString('pt-BR'));
+        return el('div', { class: 'rodape' },
+          el('span', {}, 'Kaffe Für Alle · Cafeteria'),
+          el('span', { class: 'atualizacao' }, textoAtualizacao),
+          el('span', { class: 'pagina' }, 'Página ' + pagina)
+        );
+      }
+
+      // Exporta as funções e dados públicos
+      return {
+        el,
+        dataHoje,
+        renderBarraInfo,
+        renderRodape,
+        carregarPreferencias,
+        estado,
+        toggleModoNoturno,
+        toggleModoLeitura,
+        toggleFullscreen,
+        appEl
+      };
+    })();
+
+    // ---------- Módulo de Roteamento e Telas (aplicação principal) ----------
+    const App = (function() {
+      // Importa funções e objetos dos outros módulos
+      const { el, dataHoje, renderBarraInfo, renderRodape, carregarPreferencias, estado, toggleModoNoturno, toggleModoLeitura, toggleFullscreen } = UIModule;
+      const { carregarJornais, salvarJornais, logoDoJornal, estaLogado, fazerLogin, fazerLogout } = DataModule;
+      const { buscarNoticias, formatarData, limparCache } = ApiModule;
+
+      // Referência ao elemento #app
+      let appEl = document.getElementById('app');
+      let ultimaAtualizacao = null;          // Guarda a última vez que as notícias foram carregadas
+      let currentNoticias = [];              // Guarda as notícias atuais (para autocomplete e TTS)
+
+      // ---------- ÍNDICE PARA AUTOCOMPLETE ----------
+      // Cria um índice de palavras únicas a partir das notícias (para sugestões)
+      function criarIndice(noticias) {
+        // Função para normalizar texto: remove acentos, minúsculas, remove pontuação
+        function normalizar(texto) {
+          return texto.normalize('NFD')                 // Decompõe caracteres acentuados
+            .replace(/[\u0300-\u036f]/g, '')           // Remove os acentos
+            .toLowerCase()
+            .replace(/[^a-z0-9 ]/g, ' ');              // Remove pontuação, mantém letras/números/espaços
+        }
+
+        // Lista de stopwords (palavras muito comuns que não são úteis para busca)
+        const stopwords = new Set([
+          'de', 'da', 'do', 'e', 'que', 'com', 'para', 'por', 'uma', 'um',
+          'se', 'na', 'no', 'as', 'os', 'a', 'o', 'em', 'por', 'pra'
+        ]);
+
+        const palavras = new Set();                     // Usamos Set para evitar duplicatas
+        noticias.forEach(function(n) {
+          // Junta título e resumo
+          const texto = (n.titulo || '') + ' ' + (n.resumo || '');
+          const palavrasTexto = normalizar(texto).split(/\s+/);
+          palavrasTexto.forEach(function(p) {
+            if (p.length > 2 && !stopwords.has(p)) {    // Ignora palavras curtas e stopwords
+              palavras.add(p);
+            }
+          });
+        });
+        // Retorna um array ordenado alfabeticamente
+        return Array.from(palavras).sort();
+      }
+
+      // ---------- TEXT-TO-SPEECH ----------
+      let utterance = null;      // Objeto da fala atual
+      let isSpeaking = false;    // Indica se está falando
+      let isPaused = false;      // Indica se está pausado
+
+      // Função para ler uma notícia em voz alta
+      function lerNoticia(noticia) {
+        // Cancela qualquer fala anterior
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+
+        // Monta o texto (título + resumo)
+        const texto = (noticia.titulo || '') + '. ' + (noticia.resumo || '');
+        if (!texto.trim()) {
+          alert('Não há texto para ler.');
+          return;
+        }
+
+        // Cria a utterance (fala)
+        utterance = new SpeechSynthesisUtterance(texto);
+        utterance.lang = 'pt-BR';                          // Idioma português
+        utterance.rate = parseFloat(document.getElementById('ttsRate')?.value || 1); // Velocidade
+        utterance.pitch = 1;                               // Tom normal
+        utterance.volume = 1;                              // Volume máximo
+
+        // Eventos para controlar o estado
+        utterance.onstart = function() {
+          isSpeaking = true;
+          isPaused = false;
+          atualizarBotoesTTS();
+        };
+        utterance.onend = function() {
+          isSpeaking = false;
+          isPaused = false;
+          atualizarBotoesTTS();
+        };
+        utterance.onpause = function() {
+          isPaused = true;
+          atualizarBotoesTTS();
+        };
+        utterance.onresume = function() {
+          isPaused = false;
+          atualizarBotoesTTS();
+        };
+        utterance.onerror = function() {
+          isSpeaking = false;
+          isPaused = false;
+          atualizarBotoesTTS();
+        };
+
+        window.speechSynthesis.speak(utterance);
+        atualizarBotoesTTS();
+      }
+
+      // Pausa a fala atual
+      function pausarFala() {
+        if (window.speechSynthesis && isSpeaking) {
+          window.speechSynthesis.pause();
+        }
+      }
+
+      // Retoma a fala pausada
+      function retomarFala() {
+        if (window.speechSynthesis && isPaused) {
+          window.speechSynthesis.resume();
+        }
+      }
+
+      // Para completamente a fala
+      function pararFala() {
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+          isPaused = false;
+          atualizarBotoesTTS();
+        }
+      }
+
+      // Atualiza a visibilidade dos botões de TTS (Play, Pause, Stop)
+      function atualizarBotoesTTS() {
+        const playBtn = document.getElementById('ttsPlay');
+        const pauseBtn = document.getElementById('ttsPause');
+        const stopBtn = document.getElementById('ttsStop');
+        if (playBtn) {
+          playBtn.style.display = (isSpeaking && !isPaused) ? 'none' : 'inline-block';
+        }
+        if (pauseBtn) {
+          pauseBtn.style.display = (isSpeaking && !isPaused) ? 'inline-block' : 'none';
+        }
+        if (stopBtn) {
+          stopBtn.style.display = (isSpeaking || isPaused) ? 'inline-block' : 'none';
+        }
+      }
+
+      // ---------- TELA A: LISTA DE JORNAIS (página inicial) ----------
+      function mostrarLista() {
+        appEl.innerHTML = '';                            // Limpa o conteúdo anterior
+        const jornais = carregarJornais();               // Pega a lista de jornais
+
+        // Cabeçalho (masthead)
+        const masthead = el('div', { class: 'masthead' },
+          el('div', { class: 'titulo' }, 'Kaffe Für Alle'),
+          el('div', { class: 'subtitulo' }, 'Jornais · Edição Diária · Café & Notícias')
+        );
+
+        // Barra de informações (data, switch, modo leitura, fullscreen)
+        const barra = renderBarraInfo();
+
+        // Manchete principal (lead) com texto de boas-vindas
+        const lead = el('div', { class: 'lead' },
+          el('div', { class: 'categoria' }, 'Editorial'),
+          el('h1', {}, 'Leia os principais jornais enquanto saboreia seu café'),
+          el('p', { class: 'resumo' },
+            'Selecione abaixo um dos jornais disponíveis e acompanhe as manchetes mais recentes do dia. ' +
+            'Cada publicação traz as notícias atualizadas em tempo real, direto das redações mais confiáveis.'
+          )
+        );
+
+        // Seção com os cards dos jornais
+        const secao = el('div', { class: 'secao' },
+          el('h2', {}, 'Jornais Disponíveis')
+        );
+        const grid = el('div', { class: 'grid-jornais' });
+        jornais.forEach(function(jornal) {
+          // Cada card é um link para a página de manchetes daquele jornal
+          const card = el('a', { class: 'card-jornal', href: '#/' + encodeURIComponent(jornal.name), role: 'link' });
+          const logo = el('div', { class: 'logo' });
+          const img = el('img', { src: logoDoJornal(jornal), alt: 'Logo de ' + jornal.name, loading: 'lazy' });
+          img.onerror = function() { logo.textContent = jornal.name.charAt(0); }; // Fallback se a imagem não carregar
+          logo.append(img);
+          card.append(logo, el('div', {},
+            el('div', { class: 'nome' }, jornal.name),
+            el('div', { class: 'cta' }, 'Ver manchetes →')
+          ));
+          grid.append(card);
+        });
+        secao.append(grid);
+
+        // Link para o painel administrativo
+        const linkAdmin = el('a', { class: 'link-admin', href: '#/admin' }, 'Painel do dono');
+
+        // Rodapé
+        const rodape = renderRodape('1', ultimaAtualizacao);
+
+        // Monta a página
+        appEl.append(masthead, barra, lead, secao, linkAdmin, rodape);
+      }
+
+      // ---------- TELA B: MANCHETES DE UM JORNAL (com autocomplete, TTS, modo leitura) ----------
+      async function mostrarManchetes(nomeJornal) {
+        appEl.innerHTML = '';                            // Limpa a página
+        const jornais = carregarJornais();
+        // Encontra o jornal pelo nome (vindo da URL)
+        const jornal = jornais.find(function(j) { return j.name === nomeJornal; });
+        if (!jornal) { location.hash = '#/'; return; }  // Se não encontrar, volta para a lista
+
+        // Cabeçalho menor (com o nome do jornal)
+        const masthead = el('div', { class: 'masthead' },
+          el('div', { class: 'titulo', style: 'font-size:clamp(2rem,5vw,3.5rem)' }, 'Kaffe Für Alle'),
+          el('div', { class: 'subtitulo' }, jornal.name)
+        );
+
+        // Botão voltar e barra de info
+        const voltarBtn = el('a', { class: 'voltar', href: '#/', style: 'padding:0' }, '← Voltar');
+        const barra = renderBarraInfo(voltarBtn);
+
+        appEl.append(masthead, barra);
+
+        // Área da manchete principal (lead)
+        const lead = el('div', { class: 'lead' });
+        const area = el('div', {});
+        // Mostra skeletons enquanto carrega
+        area.append(el('div', { class: 'skeleton' }), el('div', { class: 'skeleton' }), el('div', { class: 'skeleton' }));
+        lead.append(el('div', { class: 'categoria' }, 'Carregando...'), area);
+        appEl.append(lead);
+
+        // Busca as notícias do jornal
+        const resultado = await buscarNoticias(jornal);
+        ultimaAtualizacao = new Date();                  // Atualiza a hora da última carga
+        area.innerHTML = '';                             // Remove os skeletons
+        currentNoticias = resultado.items || [];         // Guarda para uso no autocomplete e TTS
+
+        if (!currentNoticias.length) {
+          // Se não houver notícias, mostra um aviso
+          area.append(el('div', { class: 'aviso' }, resultado.erro || 'Não há notícias agora.'));
+        } else {
+          // --- LEAD (primeira notícia) ---
+          const primeira = currentNoticias[0];
+          lead.innerHTML = '';                           // Limpa o lead
+          lead.append(
+            el('div', { class: 'categoria' }, 'Manchete Principal'),
+            el('h1', {}, primeira.titulo || 'Sem título')
+          );
+          if (primeira.resumo) lead.append(el('p', { class: 'resumo' }, primeira.resumo));
+          lead.append(el('div', { class: 'meta', style: 'font-family:Poppins,sans-serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--tinta3);margin-top:10px' },
+            formatarData(primeira.data)
+          ));
+
+          // --- Controles de TTS para a manchete principal ---
+          const ttsContainer = el('div', { class: 'tts-controls' });
+          ttsContainer.append(
+            el('button', { id: 'ttsPlay', onclick: function() { lerNoticia(primeira); } }, '▶ Ouvir'),
+            el('button', { id: 'ttsPause', onclick: pausarFala, style: 'display:none;' }, '⏸ Pausar'),
+            el('button', { id: 'ttsStop', onclick: pararFala, style: 'display:none;' }, '⏹ Parar'),
+            el('span', {}, 'Velocidade:'),
+            el('input', {
+              type: 'range',
+              id: 'ttsRate',
+              min: '0.5',
+              max: '2',
+              step: '0.1',
+              value: '1',
+              oninput: function() {
+                if (utterance) utterance.rate = parseFloat(this.value);
+              }
+            })
+          );
+          lead.append(ttsContainer);
+
+          // --- Seção "Mais Manchetes" com filtro e autocomplete ---
+          const outrasNoticias = currentNoticias.slice(1); // Todas exceto a primeira
+          const indice = criarIndice(outrasNoticias);       // Cria o índice de palavras
+
+          // Campo de busca + container de sugestões
+          const filtroContainer = el('div', { class: 'filtro-busca' },
+            el('input', {
+              id: 'filtroNoticias',
+              type: 'text',
+              placeholder: 'Filtrar notícias por palavra...',
+              'aria-label': 'Filtrar notícias',
+              autocomplete: 'off' // Desativa o autocomplete nativo do navegador
+            }),
+            el('button', { class: 'btn', onclick: function() { aplicarFiltro(); } }, 'Buscar'),
+            el('div', { class: 'autocomplete-suggestions', id: 'suggestions' })
+          );
+
+          const secao = el('div', { class: 'secao' },
+            el('h2', {}, 'Mais Manchetes'),
+            filtroContainer
+          );
+          const colunas = el('div', { class: 'colunas', id: 'colunasNoticias' });
+
+          // Função para renderizar as notícias na lista
+          function renderizarItems(items) {
+            colunas.innerHTML = '';
+            items.forEach(function(noticia) {
+              const materia = el('a', {
+                class: 'materia-link',
+                href: noticia.link,
+                target: '_blank',
+                rel: 'noopener',
+                role: 'article'
+              });
+              const div = el('div', { class: 'materia' });
+              // Botão "Ouvir" específico para esta notícia
+              const ttsBtn = el('button', {
+                class: 'btn',
+                style: 'font-size:0.6rem; padding:2px 8px; margin-top:6px;',
+                onclick: function(e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  lerNoticia(noticia);
+                }
+              }, '🔊 Ouvir');
+
+              div.append(
+                el('h3', {}, noticia.titulo || 'Sem título'),
+                noticia.resumo ? el('p', {}, noticia.resumo) : null,
+                el('div', { class: 'meta' }, formatarData(noticia.data)),
+                ttsBtn
+              );
+              materia.append(div);
+              colunas.append(materia);
+            });
+          }
+
+          // Função que aplica o filtro com base no termo digitado
+          function aplicarFiltro(termo) {
+            const input = document.getElementById('filtroNoticias');
+            const termoBusca = (termo || input.value).trim().toLowerCase();
+            if (!termoBusca) {
+              renderizarItems(outrasNoticias);          // Sem filtro, mostra todas
+              return;
+            }
+            // Filtra as notícias que contêm o termo no título ou resumo
+            const filtrados = outrasNoticias.filter(function(n) {
+              return n.titulo.toLowerCase().includes(termoBusca) ||
+                     (n.resumo && n.resumo.toLowerCase().includes(termoBusca));
+            });
+            renderizarItems(filtrados);
+          }
+
+          // ---- AUTCOMPLETE: evento de input no campo de busca ----
+          const inputFiltro = document.getElementById('filtroNoticias');
+          const suggestionsDiv = document.getElementById('suggestions');
+
+          // Função que mostra as sugestões
+          function mostrarSugestoes(texto) {
+            const termo = texto.trim().toLowerCase();
+            if (!termo) {
+              suggestionsDiv.classList.remove('show');
+              return;
+            }
+            // Filtra o índice: palavras que começam com o termo
+            const matches = indice.filter(function(palavra) {
+              return palavra.startsWith(termo);
+            });
+            const topMatches = matches.slice(0, 10);   // Limita a 10 sugestões
+            if (topMatches.length === 0) {
+              suggestionsDiv.classList.remove('show');
+              return;
+            }
+            // Preenche a lista de sugestões
+            suggestionsDiv.innerHTML = '';
+            topMatches.forEach(function(palavra) {
+              const item = el('div', { class: 'suggestion' }, palavra);
+              item.addEventListener('click', function() {
+                inputFiltro.value = palavra;           // Preenche o campo
+                suggestionsDiv.classList.remove('show');
+                aplicarFiltro(palavra);                // Aplica o filtro com a palavra escolhida
+              });
+              suggestionsDiv.append(item);
+            });
+            suggestionsDiv.classList.add('show');
+          }
+
+          // Ao digitar no campo, atualiza as sugestões
+          inputFiltro.addEventListener('input', function(e) {
+            mostrarSugestoes(this.value);
+          });
+
+          // Fecha as sugestões ao clicar fora do campo
+          document.addEventListener('click', function(e) {
+            if (!e.target.closest('.filtro-busca')) {
+              suggestionsDiv.classList.remove('show');
+            }
+          });
+
+          // Botão para atualizar as notícias (recarrega do feed)
+          const btnAtualizar = el('button', {
+            class: 'btn',
+            onclick: async function() {
+              limparCache();                            // Limpa o cache para forçar nova requisição
+              const novoResultado = await buscarNoticias(jornal);
+              ultimaAtualizacao = new Date();
+              mostrarManchetes(nomeJornal);             // Recarrega a tela
+            }
+          }, '↻ Atualizar notícias');
+
+          // Insere o botão após o título da seção
+          secao.querySelector('h2').after(btnAtualizar);
+          secao.append(colunas);
+          appEl.append(secao);
+
+          // Renderiza inicialmente (sem filtro)
+          renderizarItems(outrasNoticias);
+        }
+
+        // Rodapé
+        const rodape = renderRodape('2', ultimaAtualizacao);
+        appEl.append(rodape);
+      }
+
+      // ---------- TELA C: PAINEL ADMIN (gerenciar jornais) ----------
+      function mostrarPainel() {
+        appEl.innerHTML = '';
+        if (!estaLogado()) return mostrarLogin();      // Se não estiver logado, mostra tela de login
+
+        const jornais = carregarJornais();
+        const masthead = el('div', { class: 'masthead' },
+          el('div', { class: 'titulo', style: 'font-size:clamp(2rem,5vw,3.5rem)' }, 'Kaffe Für Alle'),
+          el('div', { class: 'subtitulo' }, 'Painel do Dono')
+        );
+        appEl.append(masthead);
+
+        // Topo do painel com botões
+        const topo = el('div', { class: 'painel-topo' },
+          el('div', { class: 'painel-titulo' }, 'Gerenciar Jornais'),
+          el('div', { style: 'display:flex;gap:10px' },
+            el('a', { class: 'btn', href: '#/' }, '← Página pública'),
+            el('button', { class: 'btn', onclick: function() { fazerLogout(); window.dispatchEvent(new HashChangeEvent('hashchange')); } }, 'Sair')
+          )
+        );
+        appEl.append(topo);
+
+        // Formulário para adicionar um novo jornal
+        appEl.append(el('h2', { style: 'font-family:Cinzel,serif;font-size:1.4rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--tinta);padding-bottom:8px;margin-top:24px' }, 'Adicionar novo jornal'));
+        const form = el('form', { class: 'admin-form' });
+        const linha1 = el('div', { class: 'linha-form duas' });
+        linha1.append(
+          el('div', {}, el('label', { for: 'nome' }, 'Nome do jornal'), el('input', { id: 'nome', placeholder: 'ex: O Estado de S. Paulo' })),
+          el('div', {}, el('label', { for: 'site' }, 'Site oficial'), el('input', { id: 'site', placeholder: 'https://...' }))
+        );
+        form.append(linha1);
+        form.append(el('div', {}, el('label', { for: 'rss' }, 'URL do feed RSS'), el('input', { id: 'rss', placeholder: 'https://.../feed' })));
+        form.append(el('div', {},
+          el('label', { for: 'logo' }, 'URL da logo (opcional)'),
+          el('input', { id: 'logo', placeholder: 'https://exemplo.com/logo.png' })
+        ));
+        form.append(el('p', { class: 'dica' }, 'Dica: se não souber a URL da logo, deixe vazio — o site pega o ícone automaticamente.'));
+        form.append(el('div', {}, el('button', { type: 'submit', class: 'btn solid' }, '+ Adicionar jornal')));
+
+        // Ao enviar o formulário, salva o novo jornal
+        form.addEventListener('submit', function(ev) {
+          ev.preventDefault();
+          const nome = document.getElementById('nome').value.trim();
+          const site = document.getElementById('site').value.trim();
+          const rss  = document.getElementById('rss').value.trim();
+          const logo = document.getElementById('logo').value.trim();
+          if (!nome || !site || !rss) { alert('Preencha nome, site e RSS.'); return; }
+          const lista = carregarJornais();
+          lista.push({ name: nome, site: site, rss: rss, logo: logo });
+          salvarJornais(lista);
+          alert('Jornal "' + nome + '" adicionado!');
+          mostrarPainel();                               // Recarrega o painel
+        });
+        appEl.append(form);
+
+        // Lista de jornais já cadastrados (com botão remover)
+        appEl.append(el('h2', { style: 'font-family:Cinzel,serif;font-size:1.4rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--tinta);padding-bottom:8px;margin-top:30px' }, 'Jornais cadastrados'));
+        const lista = el('div', { class: 'lista-admin' });
+        jornais.forEach(function(jornal) {
+          const item = el('div', { class: 'item-admin' });
+          const logoMini = el('div', { class: 'logo-mini' });
+          const img = el('img', { src: logoDoJornal(jornal), alt: 'Logo de ' + jornal.name, loading: 'lazy' });
+          img.onerror = function() { logoMini.textContent = jornal.name.charAt(0); };
+          logoMini.append(img);
+          item.append(logoMini, el('div', { class: 'info' },
+            el('div', { class: 'n' }, jornal.name),
+            el('div', { class: 's' }, jornal.site),
+            el('div', { class: 'l' }, jornal.logo ? 'Logo: ' + jornal.logo : 'Logo: automática')
+          ), el('button', { class: 'btn-remover', 'aria-label': 'Remover ' + jornal.name, onclick: function() {
+            if (confirm('Remover "' + jornal.name + '"?')) {
+              salvarJornais(carregarJornais().filter(function(j) { return j.name !== jornal.name; }));
+              mostrarPainel();                           // Recarrega o painel
+            }
+          } }, '✕'));
+          lista.append(item);
+        });
+        if (!jornais.length) lista.append(el('div', { class: 'aviso' }, 'Nenhum jornal cadastrado.'));
+        appEl.append(lista);
+
+        appEl.append(renderRodape('Admin', ultimaAtualizacao));
+      }
+
+      // ---------- TELA DE LOGIN (para o painel admin) ----------
+      function mostrarLogin() {
+        appEl.innerHTML = '';
+        const masthead = el('div', { class: 'masthead' },
+          el('div', { class: 'titulo', style: 'font-size:clamp(2rem,5vw,3.5rem)' }, 'Kaffe Für Alle'),
+          el('div', { class: 'subtitulo' }, 'Entrar no Painel')
+        );
+        appEl.append(masthead);
+
+        const form = el('form', { class: 'admin-form', style: 'max-width:400px;margin:30px auto' });
+        form.append(
+          el('div', {}, el('label', { for: 'senha' }, 'Senha do painel'), el('input', { id: 'senha', type: 'password', placeholder: '••••••' })),
+          el('button', { type: 'submit', class: 'btn solid' }, 'Entrar')
+        );
+        form.addEventListener('submit', function(ev) {
+          ev.preventDefault();
+          if (fazerLogin(document.getElementById('senha').value)) {
+            window.dispatchEvent(new HashChangeEvent('hashchange')); // Recarrega a rota
+          } else {
+            alert('Senha incorreta.');
+          }
+        });
+        appEl.append(form);
+        appEl.append(el('p', { class: 'dica', style: 'text-align:center;margin-top:16px' },
+          'Senha padrão: ',
+          el('code', { style: 'background:var(--papel2);padding:2px 6px;font-family:Poppins,sans-serif' }, 'cafe123')
+        ));
+        appEl.append(el('div', { style: 'text-align:center;margin-top:20px' },
+          el('a', { class: 'btn', href: '#/' }, '← Página pública')
+        ));
+        setTimeout(function() { document.getElementById('senha')?.focus(); }, 50);
+      }
+
+      // ---------- ROTEADOR ----------
+      // Lê o hash da URL e decide qual tela mostrar
+      function rotear() {
+        const hash = location.hash || '#/';
+        if (hash.startsWith('#/admin')) {
+          mostrarPainel();                               // Painel administrativo
+        } else if (hash !== '#/' && hash !== '') {
+          const nome = decodeURIComponent(hash.replace('#/', ''));
+          mostrarManchetes(nome);                        // Página de manchetes de um jornal
+        } else {
+          mostrarLista();                                // Página inicial (lista de jornais)
+        }
+      }
+
+      // ---------- INICIALIZAÇÃO ----------
+      function init() {
+        carregarPreferencias();                          // Carrega preferências de tema
+        window.addEventListener('hashchange', rotear);   // Escuta mudanças na URL
+        rotear();                                        // Renderiza a tela inicial
+      }
+
+      // Exporta a função init para ser chamada quando a página carregar
+      return { init };
+    })();
+
+    // Aguarda o DOM estar pronto para iniciar a aplicação
+    document.addEventListener('DOMContentLoaded', App.init);
+  </script>
+  <!-- Fim do JavaScript -->
+</body>
+</html>
